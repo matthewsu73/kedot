@@ -8,6 +8,10 @@
 
 SwiftUI + AppKit 原生 Mac 悬浮窗，内置本机同步服务。支持 Apple Silicon、macOS 14+，Chrome 111+；日常运行无需 Python、Node.js 或 Xcode。它是独立窗口，不是系统 WidgetKit 小组件。
 
+## 2.2.1 更新
+
+拆分 SwiftUI 更新区域、缓存已选课程，避免相同数据重复触发列表更新；加固手动编辑滑杆边界，增加键盘焦点和 VoiceOver 提示，并适配“减少透明度”。见 [更新记录](CHANGELOG.md)。未测量实际帧率或耗电提升比例。
+
 ## 本版五项功能
 
 ### 1. 视频总进度

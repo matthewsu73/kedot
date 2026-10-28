@@ -12,6 +12,7 @@ jobs:
           node-version: '22'
       - run: swift build
       - run: swift run TrackerChecks
+      - run: python3 Tests/features.py --checks-only
       - run: node Tests/test_extension.cjs
       - run: node Tests/test_options.cjs
       - run: python3 Tests/integration.py

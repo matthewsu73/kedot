@@ -1,6 +1,8 @@
 import AppKit
 import SwiftUI
 import TrackerCore
+import Observation
+import os
 
 final class FloatingPanel: NSPanel {
     override var canBecomeKey: Bool { true }
@@ -338,7 +340,8 @@ func serverPort() -> UInt16 { UInt16(ProcessInfo.processInfo.environment["BILI_T
 
 let args = ProcessInfo.processInfo.arguments
 if args.contains("--feature-checks") {
-    guard ProcessInfo.processInfo.environment["BILI_TRACKER_PREFERENCES_SUITE"] != nil else { exit(1) }
+    guard ProcessInfo.processInfo.environment["BILI_TRACKER_PREFERENCES_SUITE"] != nil,
+          ProcessInfo.processInfo.environment["BILI_TRACKER_DATA_DIR"] != nil else { exit(1) }
     MainActor.assumeIsolated {
         let model = WidgetModel(store:nil)
         model.setAppearance(.system); model.systemIsDark = false; precondition(!model.palette.dark)
@@ -351,6 +354,30 @@ if args.contains("--feature-checks") {
         precondition(large > small && small >= 0.78)
         precondition(WidgetLayout.bounded(CGSize(width:1,height:1)) == WidgetLayout.minimum)
         precondition(WidgetLayout.bounded(CGSize(width:9999,height:9999)) == WidgetLayout.maximum)
+        var first = Lesson(id:"https://www.bilibili.com/video/BV1234567890", video:Video(seconds:10,duration:100), course:Course(selected:true))
+        model.lessons = [first]
+        precondition(model.selectedCount == 1 && model.selected.first?.video.seconds == 10)
+        let countInvalidated = OSAllocatedUnfairLock(initialState:false)
+        withObservationTracking { _ = model.selectedCount } onChange: { countInvalidated.withLock { $0 = true } }
+        first = Lesson(id:first.id,video:Video(seconds:20,duration:100),course:first.course)
+        model.lessons = [first]
+        precondition(!countInvalidated.withLock { $0 } && model.selected.first?.video.seconds == 20)
+        model.lessons = []
+        precondition(countInvalidated.withLock { $0 } && model.selectedCount == 0 && model.selected.isEmpty)
+        for value in [Double.nan, Double.infinity, -Double.infinity, -100, 0, 0.5, 100000] {
+            let upper = ProgressInput.sliderUpperBound(value)
+            let current = ProgressInput.sliderSeconds(value,duration:value)
+            precondition(upper.isFinite && upper >= 1 && current.isFinite && current >= 0 && current <= upper)
+            precondition((0...1).contains(ProgressInput.fraction(value)))
+        }
+        precondition(ProgressInput.sliderSeconds(120,duration:60) == 60)
+        // A repeated read must not invalidate an otherwise unchanged lesson list.
+        let refreshModel = WidgetModel(store:try! DiskStore(directory:dataDirectory()))
+        let listInvalidated = OSAllocatedUnfairLock(initialState:false)
+        withObservationTracking { _ = refreshModel.lessons } onChange: { listInvalidated.withLock { $0 = true } }
+        refreshModel.refresh()
+        precondition(!listInvalidated.withLock { $0 })
+        print("PASS selection-count observation isolation, unchanged refresh and invalid slider draft bounds")
         print("PASS system light/dark following, explicit overrides, appearance persistence and adaptive scaling bounds")
     }
 } else if args.contains("--theme-checks") {

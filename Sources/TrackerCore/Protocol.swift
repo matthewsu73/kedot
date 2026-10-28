@@ -67,7 +67,7 @@ public final class TrackerAPI {
             guard sameSecret(request.headers["authorization"] ?? "", "Bearer " + store.token) else { throw HTTPFailure(401, "配对码错误，请重新配对") }
             guard ["/history", "/progress", "/metadata", "/health"].contains(request.path) else { throw HTTPFailure(404, "接口不存在") }
             guard let body = try JSONSerialization.jsonObject(with: request.body) as? [String: Any] else { throw HTTPFailure(400, "需要 JSON 对象") }
-            if request.path == "/health" { return APIResult(200, ["ok":true,"version":"2.2.0"]) }
+            if request.path == "/health" { return APIResult(200, ["ok":true,"version":"2.2.1"]) }
             let entries: [[String:Any]]
             if request.path == "/history" {
                 guard let items = body["items"] as? [[String:Any]], items.count <= 500 else { throw HTTPFailure(400, "历史格式无效，最多 500 条") }

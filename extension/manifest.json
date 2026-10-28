@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "课点 · B站学习进度",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "本地发现 B 站浏览记录，并跟踪真实播放进度",
   "permissions": [
     "history",

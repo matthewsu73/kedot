@@ -3,7 +3,7 @@ import AppKit
 import Observation
 import TrackerCore
 
-struct Lesson: Identifiable {
+struct Lesson: Identifiable, Equatable {
     let id: String // BV base URL; one card per multi-part course.
     let video: Video
     let course: Course
@@ -17,7 +17,15 @@ struct Lesson: Identifiable {
     var url: String { partURL(id, course.currentPart) }
 }
 @MainActor @Observable final class WidgetModel {
-    var lessons: [Lesson] = []
+    var lessons: [Lesson] = [] {
+        didSet {
+            let visible = lessons.filter { $0.course.selected }
+            if selected != visible { selected = visible }
+            if selectedCount != visible.count { selectedCount = visible.count }
+        }
+    }
+    private(set) var selected: [Lesson] = []
+    private(set) var selectedCount = 0
     var connection = "正在启动本机同步…"
     var online = false
     var lastSync: Date?
@@ -44,11 +52,10 @@ struct Lesson: Identifiable {
         compact = WidgetPreferences.defaults.bool(forKey: "compact")
         refresh()
     }
-    var selected: [Lesson] { lessons.filter { $0.course.selected } }
     func refresh() {
         guard let store else { return }
         var database = store.database; database.migrateCourses()
-        lessons = database.courses.map { base, course in
+        let updated = database.courses.map { base, course in
             let url = partURL(base, course.currentPart)
             let knownDuration = course.parts.first { $0.page == course.currentPart }?.duration ?? 0
             let video = database.videos[url] ?? Video(title:course.title, selected:course.selected, duration:knownDuration)
@@ -57,6 +64,7 @@ struct Lesson: Identifiable {
             if $0.video.updated == $1.video.updated { return $0.id < $1.id }
             return $0.video.updated > $1.video.updated
         }
+        if lessons != updated { lessons = updated }
     }
     func setAppearance(_ value: AppearanceMode, persist: Bool = true) {
         appearanceMode = value

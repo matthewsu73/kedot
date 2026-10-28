@@ -8,6 +8,10 @@ Keep your course progress on your Mac desktop, ready for your next study session
 
 Kedot is a native SwiftUI + AppKit floating desktop widget with a local sync service. It tracks Bilibili course playback through a Chrome extension. It supports Apple Silicon, macOS 14+, and Chrome 111+. Python, Node.js, and Xcode are not required for everyday use of a built app. This is a standalone floating window, not a WidgetKit system widget. The current app and extension interfaces are in Chinese; this repository provides Chinese and English documentation.
 
+## Version 2.2.1
+
+Separates SwiftUI update boundaries, caches selected courses, and skips unchanged lesson refreshes. Adds safe slider bounds for editing drafts, keyboard focus, VoiceOver labels, and Reduce Transparency support. See the [changelog](CHANGELOG.md). Frame-rate and energy improvements have not been measured.
+
 ## Features
 
 ### 1. Course progress across video parts
