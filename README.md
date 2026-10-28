@@ -1,5 +1,7 @@
 # 课点 · Kedot
 
+**简体中文** | [English](README.en.md)
+
 把网课进度放在桌面上，下一次学习从这里开始。
 
 ![课点深色界面](docs/widget-dark.png)
@@ -39,6 +41,8 @@ SwiftUI + AppKit 原生 Mac 悬浮窗，内置本机同步服务。支持 Apple 
 - 这些措施减少定时唤醒、重复传输和写盘；未测量电池续航提升百分比。
 
 ## 安装 / 升级
+
+从 GitHub 获取源码时，请先按“开发与复测”构建 `BiliWidget.app`；源码 ZIP 不能直接作为应用运行。
 1. 退出旧版。解压交付包，把新版 `BiliWidget.app` 拖入“应用程序”或固定位置，再打开。
 2. 管理课程 →“显示扩展文件夹”。Chrome 打开 `chrome://extensions`，开启开发者模式，加载 `extension` 文件夹。建议先把 extension 复制到固定位置（例如“文稿/BiliWidgetExtension”），再加载；以后只替换这个固定目录中的文件。不要依赖会在升级后被清理的旧版本目录。
 3. 已装旧扩展：用新版 `extension` 内容替换 Chrome 原来加载的文件夹，再点击“重新加载”，保留配对设置。若从新路径加载、扩展 ID 改变，则重新配对。只启用一份扩展。
@@ -64,7 +68,7 @@ SwiftUI + AppKit 原生 Mac 悬浮窗，内置本机同步服务。支持 Apple 
 - 已配置跨 Spaces 和全屏辅助窗口行为，但未覆盖所有系统、显示器或缩放组合。
 
 ## 开发与复测
-本仓库即完整源码。需要 Swift 5.9+ 的 Xcode 命令行工具；没有外部 Swift 依赖。
+本仓库即完整源码。需要 Swift 5.9+ 的 Xcode 命令行工具；没有外部 Swift 依赖。重新生成图标另需 Pillow。
 
 ```sh
 swift build
@@ -86,3 +90,7 @@ SIGNING_MODE=adhoc bash Scripts/package_app.sh release
 ## 开源许可与贡献
 
 本项目以 MIT 许可证发布，详见 [LICENSE](LICENSE)。第三方声明见 [THIRD_PARTY.md](THIRD_PARTY.md)。欢迎提交 Issue 和 Pull Request；报告问题时请隐去配对码和个人浏览记录。首次贡献前请运行上面的核心与扩展检查。
+
+## 测试报告
+
+[中文测试报告](TEST_REPORT.md) · [English test report](TEST_REPORT.en.md)

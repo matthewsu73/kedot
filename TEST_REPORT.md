@@ -1,4 +1,6 @@
-# B站网课桌面卡片 2.2.0 测试报告
+# 课点 · Kedot 2.2.0 测试报告
+
+**简体中文** | [English](TEST_REPORT.en.md)
 
 日期：2026-10-28；环境：Apple Silicon Mac、Swift 6.3.3，最低编译目标 macOS14。使用原生 AppKit/SwiftUI、Chrome 扩展后台模拟及真实回环 HTTP 集成测试。
 
@@ -34,3 +36,7 @@
 - https://developer.apple.com/documentation/appkit/nsapplication/effectiveappearance
 - https://developer.chrome.com/docs/extensions/develop/concepts/content-scripts
 - https://developer.chrome.com/docs/extensions/develop/migrate/to-service-workers
+
+## GitHub 自动检查
+
+首次公开源码的工作流已在 GitHub `macos-15` runner 通过编译、核心检查、扩展/配对页检查和真实 HTTP 集成。云端运行不等同于相应系统实机的 UI 验证。各次结果见 [Actions](https://github.com/matthewsu73/kedot/actions)。
