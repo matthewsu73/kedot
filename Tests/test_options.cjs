@@ -1,0 +1,25 @@
+const fs = require('node:fs');
+const vm = require('node:vm');
+const assert = require('node:assert/strict');
+const path = require('node:path');
+const nodes = {};
+for(const id of ['status','save','sync','token','pair-form']) nodes[id] = {textContent:'',value:'',disabled:false,dataset:{},events:{},addEventListener(name, fn){this.events[name]=fn;}};
+const saved = {};
+let response = {ok:true};
+const chrome = {storage:{local:{get:async()=>({...saved}), set:async x=>Object.assign(saved,x)}},runtime:{sendMessage:async()=>response}};
+const context = vm.createContext({document:{querySelector: selector=>nodes[selector.slice(1)]},chrome});
+vm.runInContext(fs.readFileSync(path.join(__dirname,'../extension/options.js'),'utf8'),context);
+(async()=>{
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.match(nodes.status.textContent,/尚未配对/);
+ await nodes['pair-form'].events.submit({preventDefault(){}});
+ assert.equal(nodes.status.dataset.state,'error'); assert.equal(saved.token,undefined);
+ nodes.token.value = 'x'.repeat(43); saved.status='同步成功 test';
+ await nodes['pair-form'].events.submit({preventDefault(){}});
+ assert.equal(saved.token,'x'.repeat(43));assert.equal(nodes.status.dataset.state,'success');
+ assert.equal(nodes.save.disabled,false);assert.equal(nodes.sync.disabled,false);
+ response={error:'HTTP 401 配对码错误'};
+ await nodes.sync.events.click();assert.equal(nodes.status.dataset.state,'error');assert.match(nodes.status.textContent,/401/);
+ assert.equal(nodes.save.disabled,false);
+ console.log('PASS: pairing form validation, save/sync, success/error states and button recovery');
+})().catch(error=>{console.error(error);process.exitCode=1;});

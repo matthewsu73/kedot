@@ -1,0 +1,17 @@
+name: Checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: swift build
+      - run: swift run TrackerChecks
+      - run: node Tests/test_extension.cjs
+      - run: node Tests/test_options.cjs
+      - run: python3 Tests/integration.py

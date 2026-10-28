@@ -1,0 +1,13 @@
+.DS_Store
+.build/
+.swiftpm/
+*.app/
+*.zip
+work/
+.env
+.env.*
+.bili_course_tracker/
+token.txt
+data.json
+__pycache__/
+*.pyc

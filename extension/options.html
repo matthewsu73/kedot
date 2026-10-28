@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>课点 · 配对与同步</title><link rel="icon" href="icons/icon32.png"><link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main class="shell">
+    <header><img src="icons/icon128.png" alt="" width="64" height="64"><div><p class="eyebrow">COURSE PROGRESS</p><h1>让学习进度，留在桌面</h1></div></header>
+    <p class="intro">连接 Mac 桌面卡片，把你想追踪的 B站课程和播放进度保存在本机。</p>
+    <div class="grid">
+      <section class="guide" aria-labelledby="guide-title">
+        <p class="eyebrow">QUICK START</p><h2 id="guide-title">只需配对一次</h2>
+        <ol>
+          <li><span class="step">01</span><div><h3>打开桌面卡片</h3><p>在 Mac 中打开课点，进入“管理课程”。</p></div></li>
+          <li><span class="step">02</span><div><h3>复制配对码</h3><p>点击“复制配对码”，粘贴到右侧并保存。</p></div></li>
+          <li><span class="step">03</span><div><h3>选好课程，开始学习</h3><p>刷新 B站视频页，播放几秒，再到桌面选择要显示的课程。</p></div></li>
+        </ol>
+      </section>
+      <section class="pairing" aria-labelledby="pairing-title">
+        <div class="section-top"><h2 id="pairing-title">本机配对</h2><span class="tag">LOCAL ONLY</span></div>
+        <form id="pair-form">
+          <label for="token">桌面程序配对码</label>
+          <input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="粘贴刚复制的配对码" aria-describedby="token-help">
+          <p class="hint" id="token-help">配对码用于验证本机连接，请勿分享给他人。</p>
+          <button id="save" type="submit">保存并同步历史 <span aria-hidden="true">↗</span></button>
+          <button id="sync" class="secondary" type="button">立即重试同步</button>
+        </form>
+        <div class="status-box"><span class="status-label">同步状态</span><p id="status" role="status" aria-live="polite">正在读取状态…</p></div>
+      </section>
+    </div>
+    <footer><span class="privacy-dot" aria-hidden="true"></span>仅本机保存 <span class="separator">·</span> 最多导入 500 条匹配历史 <span class="separator">·</span> 桌面程序需保持开启</footer>
+  </main>
+  <script src="options.js"></script>
+</body></html>
