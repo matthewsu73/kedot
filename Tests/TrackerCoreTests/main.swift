@@ -172,6 +172,95 @@ final class CoreTests {
         }
     }
 
+    func testCompletionAndTimestampNotes() throws {
+        let store = try temporaryStore(), api = TrackerAPI(store:store)
+        let base = courseID(video)!
+        _ = api.handle(try request(["items":[["url":video,"title":"Math"]]],token:store.token))
+        func progress(_ seconds:Double) throws {
+            XCTAssertEqual(api.handle(try request(["url":video,"seconds":seconds,"duration":100],path:"/progress",token:store.token)).status,200)
+        }
+        try progress(96)
+        XCTAssertEqual(store.database.status(base:base,page:2),.completed)
+        try progress(20)
+        XCTAssertEqual(store.database.status(base:base,page:2),.completed)
+        try store.setCompletion(base:base,page:2,completed:false)
+        try progress(99)
+        XCTAssertEqual(store.database.status(base:base,page:2),.unwatched)
+        try store.setCompletion(base:base,page:2,completed:nil)
+        XCTAssertEqual(store.database.status(base:base,page:2),.completed)
+        XCTAssertEqual(store.database.completedPages(base:base),1)
+        var note=StudyNote(course:base,page:2,seconds:12.8,text:"  chain rule  ")
+        try store.saveNote(note)
+        XCTAssertTrue(note.url!.absoluteString.contains("p=2&t=12"))
+        XCTAssertEqual(store.database.notes.first!.text,"chain rule")
+        note.text="updated"; try store.saveNote(note)
+        XCTAssertEqual(store.database.notes.count,1)
+        let restored=try DiskStore(directory:store.directory,exclusive:false)
+        XCTAssertEqual(restored.database.notes.first!.text,"updated")
+        XCTAssertEqual(restored.database.status(base:base,page:2),.completed)
+        XCTAssertEqual(restored.database.studyDays,[:])
+        note.seconds = .nan; XCTAssertThrowsError(try store.saveNote(note))
+        note.seconds=1; note.text="   "; XCTAssertThrowsError(try store.saveNote(note))
+        try store.deleteNote(id:note.id); XCTAssertEqual(store.database.notes.count,0)
+        XCTAssertTrue(FileManager.default.fileExists(atPath:store.directory.appendingPathComponent("pre-2.3-backup.json").path))
+    }
+    func testStudyTimeBoundaries() throws {
+        let store=try temporaryStore(), api=TrackerAPI(store:store)
+        var now=Date(timeIntervalSince1970:1700000000)
+        api.clock = { now }
+        func progress(_ seconds:Double, reason:String="timeupdate") throws {
+            XCTAssertEqual(api.handle(try request(["url":video,"seconds":seconds,"duration":1000,"reason":reason],path:"/progress",token:store.token)).status,200)
+        }
+        try progress(0,reason:"playing")
+        now=now.addingTimeInterval(2); try progress(2)
+        XCTAssertEqual(store.database.totalStudySeconds,2)
+        try progress(2); XCTAssertEqual(store.database.totalStudySeconds,2)
+        now=now.addingTimeInterval(2); try progress(800,reason:"seeked")
+        XCTAssertEqual(store.database.totalStudySeconds,2)
+        now=now.addingTimeInterval(2); try progress(802)
+        XCTAssertEqual(store.database.totalStudySeconds,4)
+        now=now.addingTimeInterval(90); try progress(900)
+        XCTAssertEqual(store.database.totalStudySeconds,4)
+        try store.setManualProgress(base:courseID(video)!,page:2,total:60,seconds:950,duration:1000)
+        XCTAssertEqual(store.database.totalStudySeconds,4)
+        var db=Database(), tracker=StudyRecorder()
+        var calendar=Calendar(identifier:.gregorian); calendar.timeZone=TimeZone(secondsFromGMT:0)!
+        let midnight=calendar.date(from:DateComponents(year:2026,month:10,day:29))!
+        tracker.record(database:&db,url:video,seconds:10,reason:"playing",now:midnight.addingTimeInterval(-2),calendar:calendar)
+        tracker.record(database:&db,url:video,seconds:14,reason:"timeupdate",now:midnight.addingTimeInterval(2),calendar:calendar)
+        XCTAssertEqual(db.studyDays["2026-10-28"]!.values.reduce(0,+),2)
+        XCTAssertEqual(db.studyDays["2026-10-29"]!.values.reduce(0,+),2)
+        let other="https://www.bilibili.com/video/BV1234567891"
+        tracker.record(database:&db,url:other,seconds:0,reason:"playing",now:midnight,calendar:calendar)
+        tracker.record(database:&db,url:other,seconds:2,reason:"timeupdate",now:midnight.addingTimeInterval(2),calendar:calendar)
+        XCTAssertEqual(db.totalStudySeconds,4) // Parallel tabs cannot double-count.
+        var slowDB=Database(), slowTracker=StudyRecorder()
+        slowTracker.record(database:&slowDB,url:video,seconds:0,reason:"playing",now:midnight,rate:0.5)
+        slowTracker.record(database:&slowDB,url:video,seconds:1,reason:"timeupdate",now:midnight.addingTimeInterval(2),rate:0.5)
+        XCTAssertEqual(slowDB.totalStudySeconds,2)
+
+    }
+    func testLearningSchemaMigrationAndRejection() throws {
+        let directory=FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at:directory,withIntermediateDirectories:true)
+        addTeardownBlock { try? FileManager.default.removeItem(at:directory) }
+        let legacy:[String:Any] = ["videos":[video:["title":"Legacy","selected":true,"seconds":96,"duration":100,"updated":1]]]
+        let url=directory.appendingPathComponent("data.json")
+        try JSONSerialization.data(withJSONObject:legacy).write(to:url)
+        do {
+            let store=try DiskStore(directory:directory)
+            XCTAssertEqual(store.database.notes,[]); XCTAssertEqual(store.database.studyDays,[:])
+            XCTAssertEqual(store.database.status(base:courseID(video)!,page:2),.completed)
+            try store.setCompletion(base:courseID(video)!,page:2,completed:false)
+        }
+        let backup=try Data(contentsOf:directory.appendingPathComponent("pre-2.3-backup.json"))
+        XCTAssertEqual(try JSONSerialization.jsonObject(with:backup) as! NSDictionary, legacy as NSDictionary)
+        var malformed=try JSONSerialization.jsonObject(with:Data(contentsOf:url)) as! [String:Any]
+        malformed["completion"]=["https://evil.example/":true]
+        let bad=try JSONSerialization.data(withJSONObject:malformed); try bad.write(to:url)
+        XCTAssertThrowsError(try DiskStore(directory:directory)); XCTAssertEqual(try Data(contentsOf:url),bad)
+    }
+
 }
 
 let tests = CoreTests()
@@ -189,7 +278,10 @@ let checks: [(String, () throws -> Void)] = [
     ("course migration, metadata and total position", tests.testCourseMigrationAndMetadata),
     ("manual progress lock and automatic resume", tests.testManualOverrideAndResume),
     ("coalesced disk writes and immediate pause flush", tests.testCoalescedWritesAndUrgentFlush),
-    ("metadata validation and course grouping", tests.testMetadataValidationAndSelectionGrouping)
+    ("metadata validation and course grouping", tests.testMetadataValidationAndSelectionGrouping),
+    ("completion persistence, override and timestamp note CRUD", tests.testCompletionAndTimestampNotes),
+    ("study time, seeks, gaps, midnight and parallel tabs", tests.testStudyTimeBoundaries),
+    ("learning data migration, backup and malformed file preservation", tests.testLearningSchemaMigrationAndRejection)
 ]
 for (name, run) in checks { try run(); print("PASS: \(name)") }
 print("All \(checks.count) native core checks passed")

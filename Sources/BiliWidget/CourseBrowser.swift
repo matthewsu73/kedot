@@ -39,10 +39,11 @@ struct CourseBrowser: View {
                         }
                         Spacer()
                         if lesson.course.manualProgress { Button("恢复自动") { model.resume(lesson) } }
+                        Button("分集与笔记") { model.inspect(lesson) }
                         Button("调整进度") { model.edit(lesson) }
                         Button("打开") { model.open(lesson) }
                     }.padding(.vertical, 5)
-                }.listStyle(.inset)
+                }.listStyle(.inset).buttonStyle(.borderless)
             }
         }
     }

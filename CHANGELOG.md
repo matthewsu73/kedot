@@ -1,5 +1,34 @@
 # 更新记录 / Changelog
 
+## 2.3.0 — 正式版 / Release (2026-10-29)
+
+- 将当前 Mac 2.3 功能作为正式版发行，构建23003；此前Beta记录保留供参考。
+- 包含逐集状态、时间戳笔记、学习统计、原生窗口控制和简化导航。
+- 去除悬浮窗外圈细边框，放大默认字体；新增80%–140%字体调节、即时生效及偏好保存。
+- Promote the current Mac 2.3 features to release, build23003, with per-part completion, notes, statistics and native window controls.
+- Remove the outer widget outline, enlarge default text and add persistent 80%–140% font adjustment.
+- 保留临时签名和实机覆盖限制；详见发行说明。Ad-hoc signing and documented verification limits remain.
+
+## 2.3.0 Beta 2 — 窗口与导航 / Window and navigation
+
+- 使用系统标题栏拖动、原生关闭/最小化/缩放；关闭悬浮窗仅收起，菜单栏可恢复，退出时保存。
+- 统一课程、统计、设置为控制中心三个分区；常用操作扁平化，支持窗口预设、居中和恢复默认。
+- 移动/缩放延迟合并保存位置；屏幕变化与离屏位置自动调整。
+- Native title-bar movement and window controls; closing hides the widget while synchronization continues. Restore from the menu bar.
+- Three control-center sections: courses, statistics and settings; size presets, centering and reset.
+- Debounced geometry persistence and display-bound placement recovery. Local beta; GitHub sync requires approval.
+
+## 2.3.0 Beta 1 — 测试版 / Test release
+
+- 逐集完成状态、手动覆盖和恢复自动；95%播放位置自动完成，回看不撤销。
+- 纯文本时间戳笔记，可新增/编辑/删除，打开分集并请求时间跳转。
+- 今日、7天、累计、90天记录和课程时长统计；支持倍速、去重、跳转排除、跨午夜分摊。
+- 旧格式默认迁移、首写备份、测试版标识；当前版本均为测试版，完整版尚无确定计划。
+- Per-part completion with persistent manual overrides; automatic position-threshold completion survives rewinding.
+- Timestamped plain-text notes with create/edit/delete and part/time links.
+- Today/seven-day/all-time totals, 90-day records and course breakdown; playback-rate-aware estimates, deduplication, seek exclusion and local-midnight splitting.
+- Legacy schema migration, first-write backup and beta labeling. No date or scope is committed for a possible full version.
+
 ## 2.2.1 — SwiftUI 优化 / SwiftUI improvements
 
 ### 简体中文

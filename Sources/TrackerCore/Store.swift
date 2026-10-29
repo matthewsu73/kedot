@@ -37,12 +37,20 @@ public struct Course: Codable, Equatable {
 public struct Database: Codable, Equatable {
     public var videos: [String: Video]
     public var courses: [String: Course]
+    public var completion: [String: Bool] = [:]
+    public var finished: Set<String> = []
+    public var notes: [StudyNote] = []
+    public var studyDays: [String: [String: Double]] = [:]
     public init(videos: [String: Video] = [:], courses: [String: Course] = [:]) { self.videos = videos; self.courses = courses }
-    enum CodingKeys: String, CodingKey { case videos, courses }
+    enum CodingKeys: String, CodingKey { case videos, courses, completion, finished, notes, studyDays }
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         videos = try c.decode([String: Video].self, forKey: .videos)
         courses = try c.decodeIfPresent([String: Course].self, forKey: .courses) ?? [:]
+        completion = try c.decodeIfPresent([String: Bool].self, forKey: .completion) ?? [:]
+        finished = try c.decodeIfPresent(Set<String>.self, forKey: .finished) ?? Set(videos.filter { $0.value.duration > 0 && $0.value.fraction >= 0.95 }.map(\.key))
+        notes = try c.decodeIfPresent([StudyNote].self, forKey: .notes) ?? []
+        studyDays = try c.decodeIfPresent([String: [String: Double]].self, forKey: .studyDays) ?? [:]
         migrateCourses()
     }
     public mutating func migrateCourses() {
@@ -135,6 +143,7 @@ public final class DiskStore {
                     throw TrackerError.message("课程分集数据无效，请先备份 data.json。")
                 }
             }
+            try database.validateLearningData()
             persisted = database
             lockFD = descriptor
         } catch {
@@ -147,7 +156,11 @@ public final class DiskStore {
         if value == persisted { database = value; pendingSave?.cancel(); pendingSave = nil; return }
         let url = directory.appendingPathComponent("data.json")
         let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try value.validateLearningData()
         let bytes = try encoder.encode(value)
+        if FileManager.default.fileExists(atPath:url.path), !FileManager.default.fileExists(atPath:directory.appendingPathComponent("pre-2.3-backup.json").path) {
+            try FileManager.default.copyItem(at:url,to:directory.appendingPathComponent("pre-2.3-backup.json"))
+        }
         // Create temporary content with 0600 before atomically replacing the database.
         let temporary = directory.appendingPathComponent(".save-\(UUID().uuidString)")
         guard FileManager.default.createFile(atPath: temporary.path, contents: bytes, attributes: [.posixPermissions: 0o600]) else {

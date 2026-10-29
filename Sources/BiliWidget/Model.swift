@@ -16,6 +16,11 @@ struct Lesson: Identifiable, Equatable {
     var totalText: String { course.totalParts.map { "P\(course.currentPart) / 共 \($0) 集" } ?? "P\(course.currentPart) · 总集数待识别" }
     var url: String { partURL(id, course.currentPart) }
 }
+enum ManagerSection: String, CaseIterable, Identifiable {
+    case courses, statistics, settings
+    var id: String { rawValue }
+    var title: String { switch self { case .courses: return "课程"; case .statistics: return "统计"; case .settings: return "设置" } }
+}
 @MainActor @Observable final class WidgetModel {
     var lessons: [Lesson] = [] {
         didSet {
@@ -31,6 +36,7 @@ struct Lesson: Identifiable, Equatable {
     var lastSync: Date?
     var errorMessage: String?
     var alwaysOnTop: Bool
+    private(set) var fontScale: Double
     var compact: Bool
     private(set) var theme: WidgetTheme
     var feedback: String?
@@ -38,14 +44,21 @@ struct Lesson: Identifiable, Equatable {
     var systemIsDark = false
     private(set) var appearanceMode: AppearanceMode
     var editing: Lesson?
+    var detail: Lesson?
+    var managerSection: ManagerSection = .courses
+    var library = Database()
     var palette: ThemePalette { ThemePalette(theme: theme, dark: appearanceMode == .system ? systemIsDark : appearanceMode == .dark) }
     @ObservationIgnored let store: DiskStore?
     @ObservationIgnored var configurePanel: (() -> Void)?
     @ObservationIgnored var showManager: (() -> Void)?
     @ObservationIgnored var themeDidChange: (() -> Void)?
     @ObservationIgnored var hideWidget: (() -> Void)?
+    @ObservationIgnored var resetWindow: (() -> Void)?
+    @ObservationIgnored var centerWindow: (() -> Void)?
+    @ObservationIgnored var resizeWindow: ((CGSize) -> Void)?
     init(store: DiskStore?) {
         self.store = store
+        fontScale = Self.boundedFontScale(WidgetPreferences.defaults.object(forKey:"fontScale") as? Double ?? 1)
         appearanceMode = AppearanceMode(rawValue: WidgetPreferences.defaults.string(forKey:"appearanceMode") ?? "system") ?? .system
         theme = WidgetTheme(rawValue: WidgetPreferences.defaults.string(forKey: "theme") ?? "mint") ?? .mint
         alwaysOnTop = WidgetPreferences.defaults.object(forKey: "alwaysOnTop") as? Bool ?? true
@@ -55,6 +68,7 @@ struct Lesson: Identifiable, Equatable {
     func refresh() {
         guard let store else { return }
         var database = store.database; database.migrateCourses()
+        if library != database { library = database }
         let updated = database.courses.map { base, course in
             let url = partURL(base, course.currentPart)
             let knownDuration = course.parts.first { $0.page == course.currentPart }?.duration ?? 0
@@ -66,12 +80,25 @@ struct Lesson: Identifiable, Equatable {
         }
         if lessons != updated { lessons = updated }
     }
+    func inspect(_ lesson: Lesson) { managerSection = .courses; detail = lesson; showManager?() }
+    func openCenter(_ section: ManagerSection) { managerSection = section; showManager?() }
+    func showStatistics() { openCenter(.statistics) }
+    func completion(_ lesson: Lesson, page: Int, value: Bool?) {
+        do { try store?.setCompletion(base:lesson.id,page:page,completed:value); refresh() }
+        catch { errorMessage = error.localizedDescription }
+    }
+    func saveNote(_ note: StudyNote) throws { try store?.saveNote(note); refresh() }
+    func deleteNote(_ note: StudyNote) {
+        do { try store?.deleteNote(id:note.id); refresh() }
+        catch { errorMessage = error.localizedDescription }
+    }
+    func openNote(_ note: StudyNote) { if let url = note.url { NSWorkspace.shared.open(url) } }
     func setAppearance(_ value: AppearanceMode, persist: Bool = true) {
         appearanceMode = value
         if persist { WidgetPreferences.defaults.set(value.rawValue, forKey:"appearanceMode") }
         themeDidChange?()
     }
-    func edit(_ lesson: Lesson) { editing = lesson; showManager?() }
+    func edit(_ lesson: Lesson) { managerSection = .courses; editing = lesson; showManager?() }
     func saveProgress(_ lesson: Lesson, page: Int, total: Int?, seconds: Double, duration: Double) throws {
         try store?.setManualProgress(base:lesson.id,page:page,total:total,seconds:seconds,duration:duration)
         refresh(); editing = nil
@@ -84,6 +111,13 @@ struct Lesson: Identifiable, Equatable {
     func select(_ lesson: Lesson) {
         do { try store?.select(lesson.id, value: !lesson.course.selected); refresh() }
         catch { errorMessage = error.localizedDescription }
+    }
+    static func boundedFontScale(_ value: Double) -> Double { value.isFinite ? max(0.8,min(1.4,value)) : 1 }
+    func setFontScale(_ value: Double) {
+        let bounded=Self.boundedFontScale(value)
+        guard bounded != fontScale else { return }
+        fontScale=bounded
+        WidgetPreferences.defaults.set(bounded,forKey:"fontScale")
     }
     func toggleTop() {
         alwaysOnTop.toggle(); WidgetPreferences.defaults.set(alwaysOnTop, forKey: "alwaysOnTop"); configurePanel?()

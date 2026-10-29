@@ -11,3 +11,7 @@ token.txt
 data.json
 __pycache__/
 *.pyc
+Windows/.venv/
+Windows/build/
+Windows/dist/
+*.spec

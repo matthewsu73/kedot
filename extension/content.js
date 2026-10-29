@@ -22,7 +22,7 @@
     if (Math.abs(video.currentTime-lastSeconds)<0.25 && video.duration===lastDuration && (!force || reason===lastReason)) return;
     lastAt = now; lastSeconds = video.currentTime; lastDuration = video.duration; lastReason = reason;
     chrome.runtime.sendMessage({kind:'progress',payload:{url:location.href,title:document.title,seconds:video.currentTime,
-      duration:video.duration, reason, deferSave:!force}}).then(result=>{
+      duration:video.duration, playbackRate:video.playbackRate, reason, deferSave:!force}}).then(result=>{
         if (result?.lowPower !== undefined) lowPower = Boolean(result.lowPower);
       }).catch(()=>{});
   }
@@ -37,7 +37,7 @@
     const loaded = () => { route(); ready = true; requestMetadata(); send(true,'loaded'); };
     on('loadedmetadata',loaded); on('playing',()=>{ route(); ready=true; requestMetadata(); send(true,'playing'); });
     on('timeupdate',()=>send());
-    for (const event of ['pause','ended','seeked','durationchange']) on(event,()=>send(true,event));
+    for (const event of ['pause','ended','seeked','durationchange','ratechange']) on(event,()=>send(true,event));
     if (first && video.readyState>=1) { ready=true; send(true,'initial'); }
   }
   window.addEventListener('message',event=>{

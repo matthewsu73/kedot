@@ -1,12 +1,23 @@
 import SwiftUI
 import TrackerCore
 
+private struct WidgetFontScaleKey: EnvironmentKey {
+    static let defaultValue: CGFloat = 1
+}
+extension EnvironmentValues {
+    var widgetFontScale: CGFloat {
+        get { self[WidgetFontScaleKey.self] }
+        set { self[WidgetFontScaleKey.self] = newValue }
+    }
+}
+
 struct WidgetView: View {
     let model: WidgetModel
     var body: some View {
         GeometryReader { proxy in
             let scale = WidgetLayout.scale(proxy.size, compact:model.compact)
             WidgetContent(model:model)
+                .environment(\.widgetFontScale,CGFloat(model.fontScale))
                 .frame(width:proxy.size.width/scale,height:proxy.size.height/scale)
                 .scaleEffect(scale,anchor:.topLeading)
         }
@@ -32,7 +43,6 @@ struct WidgetContent: View {
             }
         }
         .clipShape(RoundedRectangle(cornerRadius:25,style:.continuous))
-        .overlay { RoundedRectangle(cornerRadius:25).strokeBorder(theme.border,lineWidth:1) }
         .padding(10).environment(\.colorScheme,theme.colorScheme)
     }
 }
@@ -49,28 +59,30 @@ struct ProgressTrack: View {
     }
 }
 struct LessonCard: View {
+    @Environment(\.widgetFontScale) private var fontScale
     let lesson: Lesson
     let theme: ThemePalette
     let open: () -> Void
     let edit: () -> Void
     let resume: () -> Void
+    let inspect: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var hovered = false
     var body: some View {
         VStack(alignment:.leading,spacing:10) {
             HStack(alignment:.top,spacing:8) {
                 Button(action:open) {
-                    Text(lesson.title).font(.system(size:12,weight:.semibold)).lineLimit(2)
+                    Text(lesson.title).font(.system(size:14*fontScale,weight:.semibold)).lineLimit(2)
                         .multilineTextAlignment(.leading).frame(maxWidth:.infinity,alignment:.leading)
                 }.buttonStyle(.plain).help("打开当前分 P").accessibilityLabel("打开"+lesson.title).accessibilityHint("在浏览器打开当前分集")
                 Button(action:edit) {
-                    Image(systemName:"slider.horizontal.3").font(.system(size:12)).foregroundStyle(theme.muted).frame(width:24,height:22)
+                    Image(systemName:"slider.horizontal.3").font(.system(size:12*fontScale)).foregroundStyle(theme.muted).frame(width:24,height:22)
                 }.buttonStyle(.plain).help("手动调整进度").accessibilityLabel("调整"+lesson.title+"的进度")
             }
             HStack {
-                Text(lesson.totalText).font(.system(size:11,weight:.semibold,design:.rounded)).foregroundStyle(theme.accent)
+                Text(lesson.totalText).font(.system(size:13*fontScale,weight:.semibold,design:.rounded)).foregroundStyle(theme.accent)
                 Spacer(minLength:0)
-                if lesson.course.manualProgress { Image(systemName:"hand.raised.fill").font(.system(size:9)).foregroundStyle(theme.accent).help("手动记录，自动覆盖已暂停").accessibilityLabel("手动记录，自动覆盖已暂停") }
+                if lesson.course.manualProgress { Image(systemName:"hand.raised.fill").font(.system(size:11*fontScale)).foregroundStyle(theme.accent).help("手动记录，自动覆盖已暂停").accessibilityLabel("手动记录，自动覆盖已暂停") }
             }
             if let position = lesson.course.positionFraction(video:lesson.video) {
                 ProgressTrack(value:position,theme:theme)
@@ -78,19 +90,21 @@ struct LessonCard: View {
                     Text("课程位置 \(Int(position*100))%")
                     Spacer()
                     Text(lesson.course.manualProgress ? "手动记录":"自动同步")
-                }.font(.system(size:9)).foregroundStyle(theme.faint)
+                }.font(.system(size:11*fontScale)).foregroundStyle(theme.faint)
             }
+            Button("分集与笔记", action:inspect).buttonStyle(.plain).font(.system(size:12*fontScale,weight:.medium)).foregroundStyle(theme.accent)
             HStack {
                 Text(lesson.video.duration > 0 ? "本集 \(formattedTime(lesson.video.seconds)) / \(formattedTime(lesson.video.duration))":"本集尚无播放进度")
-                    .font(.system(size:10,design:.monospaced)).foregroundStyle(theme.muted)
+                    .font(.system(size:12*fontScale,design:.monospaced)).foregroundStyle(theme.muted)
                 Spacer()
                 Text(lesson.video.duration > 0 ? "\(Int(lesson.video.fraction*100))%":"—")
-                    .font(.system(size:11,weight:.semibold,design:.rounded)).foregroundStyle(theme.accent)
+                    .font(.system(size:13*fontScale,weight:.semibold,design:.rounded)).foregroundStyle(theme.accent)
             }
         }.padding(13).background(theme.card,in:RoundedRectangle(cornerRadius:15))
             .overlay { RoundedRectangle(cornerRadius:15).strokeBorder(theme.accent.opacity(hovered ? 0.38:0.07),lineWidth:1) }
             .onHover { hovered = $0 }.animation(reduceMotion ? nil:.easeOut(duration:0.16),value:hovered)
             .contextMenu {
+                Button("分集与笔记",action:inspect)
                 Button("调整进度",action:edit)
                 if lesson.course.manualProgress { Button("恢复自动同步",action:resume) }
                 Button("打开当前分 P",action:open)
@@ -100,52 +114,38 @@ struct LessonCard: View {
 struct ManagerView: View {
     let model: WidgetModel
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        @Bindable var model=model
+        VStack(alignment:.leading,spacing:14) {
             HStack {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text("管理你的网课").font(.title2.bold())
-                    Text("选择的课程会出现在桌面悬浮窗中；同一视频的分 P 合并为一门课程。")
-                        .font(.callout).foregroundStyle(.secondary)
-                }
+                Text("课点控制中心").font(.title2.bold())
+                Text("2.3.0 · 正式版").font(.caption).foregroundStyle(.secondary)
                 Spacer()
-                Text("\(model.selectedCount) 已选").foregroundStyle(.secondary)
+                Text("\(model.selectedCount) 门已选").font(.callout).foregroundStyle(.secondary)
             }
-            GroupBox {
-                VStack(alignment: .leading, spacing: 10) {
-                    Label(model.connection, systemImage: model.online ? "checkmark.circle.fill" : "exclamationmark.circle")
-                        .foregroundStyle(model.online ? .green : .orange)
-                    Text("首次使用：加载 Chrome 扩展 → 复制配对码 → 在扩展选项页粘贴并同步 → 刷新 B站视频页。")
-                        .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-                    HStack {
-                        Button("显示扩展文件夹", action: model.revealExtension)
-                        Button("复制配对码", action: model.copyToken).disabled(model.store == nil)
-                        Spacer()
-                        Button("打开数据目录", action: model.revealData)
-                    }
-                }.frame(maxWidth: .infinity, alignment: .leading).padding(6)
+            Picker("导航",selection:$model.managerSection) {
+                ForEach(ManagerSection.allCases) { Text($0.title).tag($0) }
+            }.pickerStyle(.segmented)
+            switch model.managerSection {
+            case .courses:
+                CourseBrowser(model:model)
+                Text("勾选课程显示在桌面；分集、笔记和进度操作集中在对应课程中。")
+                    .font(.caption).foregroundStyle(.secondary)
+            case .statistics:
+                LearningStatsView(model:model,embedded:true)
+            case .settings:
+                WidgetSettingsView(model:model)
             }
-            GroupBox("外观主题") {
-                VStack(spacing: 8) {
-                    Picker("外观模式", selection: Binding(get:{ model.appearanceMode },set:{ model.setAppearance($0) })) {
-                        ForEach(AppearanceMode.allCases) { Text($0.name).tag($0) }
-                    }.pickerStyle(.segmented).frame(maxWidth: 330)
-                    HStack(spacing: 8) {
-                    ForEach(WidgetTheme.allCases) { value in
-                        ThemeSwatch(theme: value, dark: model.palette.dark, selected: model.theme == value) { model.setTheme(value) }
-                    }
-                    }
-                }.frame(maxWidth: .infinity).padding(.vertical, 8)
-            }
-            CourseBrowser(model:model)
-            Text("本机保存 · 不读取 B站账号密码 · 播放时约每 2 秒同步 · 暂停立即保存").font(.caption).foregroundStyle(.secondary)
-        }.padding(22).frame(minWidth: 600, minHeight: 620)
+        }.padding(20).frame(minWidth:700,minHeight:690)
         .background(model.palette.background).foregroundStyle(model.palette.foreground)
         .tint(model.palette.accent).preferredColorScheme(model.palette.colorScheme)
-        .sheet(item:Binding(get:{ model.editing },set:{ model.editing = $0 })) { lesson in
-            ProgressEditor(model:model, lesson:lesson)
+        .sheet(item:Binding(get:{ model.editing },set:{ model.editing=$0 })) { lesson in
+            ProgressEditor(model:model,lesson:lesson)
         }
-        .alert("提示", isPresented: Binding(get: { model.feedback != nil }, set: { if !$0 { model.feedback = nil } })) {
-            Button("好") { model.feedback = nil }
+        .sheet(item:Binding(get:{ model.detail },set:{ model.detail=$0 })) { lesson in
+            CourseDetailsView(model:model,lesson:lesson)
+        }
+        .alert("提示",isPresented:Binding(get:{model.feedback != nil},set:{if !$0 {model.feedback=nil}})) {
+            Button("好") { model.feedback=nil }
         } message: { Text(model.feedback ?? "") }
     }
 }

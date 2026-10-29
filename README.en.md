@@ -1,4 +1,4 @@
-# 课点 · Kedot
+# 课点 · Kedot 2.3
 
 [简体中文](README.md) | **English**
 
@@ -7,6 +7,24 @@ Keep your course progress on your Mac desktop, ready for your next study session
 ![Kedot desktop widget in dark mode](docs/widget-dark.png)
 
 Kedot is a native SwiftUI + AppKit floating desktop widget with a local sync service. It tracks Bilibili course playback through a Chrome extension. It supports Apple Silicon, macOS 14+, and Chrome 111+. Python, Node.js, and Xcode are not required for everyday use of a built app. This is a standalone floating window, not a WidgetKit system widget. The current app and extension interfaces are in Chinese; this repository provides Chinese and English documentation.
+
+## 2.3.0 release
+
+Settings → Appearance → Widget font: adjust from 80% to 140%, applied immediately and remembered across launches. Reset restores 100%.
+
+The widget provides native title-bar movement and edge resizing. Close/⌘W hides the widget; restore it from the menu bar and use ⌘Q to quit. The control center groups courses, statistics and settings, including size presets, centering and reset.
+
+**2.3.0 is the Mac release**, succeeding the 2.3 betas. See [release notes and known limitations](RELEASE_NOTES_2.3.md).
+
+- **Per-part completion:** open a card's “分集与笔记” (Parts & notes). Parts show incomplete/in progress/completed; reaching 95% playback position marks completion, which survives rewinding. Explicit manual complete/incomplete overrides persist until automatic tracking is restored. This is not proof of full viewing. Lists paginate at 100 parts.
+- **Timestamp notes:** choose the notes segment and “记笔记” (New note). Drafts use the latest desktop-synced part/time and allow correction. Plain-text notes support create/edit/delete, up to 10,000 characters. Timestamp links open the default browser with the part and `t=` parameter; actual seeking depends on Bilibili's player.
+- **Study statistics:** today's time, the last seven days, all-time totals, a seven-day bar chart, 90-day history, and time by course. Tracking begins with 2.3 and does not reconstruct historical study time.
+- **Measurement:** conservatively estimates playback wall time using successive positions, playback rate and request intervals. Explicit seeks, duplicates, manual edits, history imports and gaps over 30 seconds do not add time. Parallel tabs do not double-count. This does not measure attention, and freezing/offline delivery/network jitter or rate changes can undercount. Older extensions omit playback rate; update the extension and refresh tabs.
+- **Migration:** the first write saves an existing database as `pre-2.3-backup.json` unless a backup already exists. Quit old versions first. Older apps may discard new fields, so do not downgrade against the new database. Preserve a separate copy before any restoration.
+
+## Windows
+
+The Windows port remains a separate local preview. This release includes the Mac app only.
 
 ## Version 2.2.1
 
@@ -108,3 +126,5 @@ Released under the [MIT license](LICENSE). See [THIRD_PARTY.md](THIRD_PARTY.md) 
 ## Test reports
 
 [中文测试报告](TEST_REPORT.md) · [English test report](TEST_REPORT.en.md)
+
+[2.3 测试报告 / Validation](TEST_REPORT_2.3.md)

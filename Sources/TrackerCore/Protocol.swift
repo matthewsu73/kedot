@@ -54,6 +54,8 @@ public final class TrackerAPI {
     public let store: DiskStore
     public let port: UInt16
     public var didSync: (() -> Void)?
+    private var recorder = StudyRecorder()
+    public var clock: () -> Date = Date.init
     public init(store: DiskStore, port: UInt16 = 8765) { self.store = store; self.port = port }
     private func sameSecret(_ a: String, _ b: String) -> Bool {
         let x = Array(a.utf8), y = Array(b.utf8)
@@ -67,7 +69,7 @@ public final class TrackerAPI {
             guard sameSecret(request.headers["authorization"] ?? "", "Bearer " + store.token) else { throw HTTPFailure(401, "配对码错误，请重新配对") }
             guard ["/history", "/progress", "/metadata", "/health"].contains(request.path) else { throw HTTPFailure(404, "接口不存在") }
             guard let body = try JSONSerialization.jsonObject(with: request.body) as? [String: Any] else { throw HTTPFailure(400, "需要 JSON 对象") }
-            if request.path == "/health" { return APIResult(200, ["ok":true,"version":"2.2.1"]) }
+            if request.path == "/health" { return APIResult(200, ["ok":true,"version":"2.3.0","channel":"stable"]) }
             let entries: [[String:Any]]
             if request.path == "/history" {
                 guard let items = body["items"] as? [[String:Any]], items.count <= 500 else { throw HTTPFailure(400, "历史格式无效，最多 500 条") }
@@ -76,6 +78,7 @@ public final class TrackerAPI {
             var copy = store.database
             copy.migrateCourses()
             var accepted = 0
+            var nextRecorder = recorder
             for entry in entries {
                 guard let raw = entry["url"] as? String, let url = canonicalVideo(raw) else { continue }
                 let base = courseID(url)!
@@ -90,6 +93,8 @@ public final class TrackerAPI {
                           CFGetTypeID(s) != CFBooleanGetTypeID(), CFGetTypeID(d) != CFBooleanGetTypeID() else { throw HTTPFailure(400, "进度必须为数字") }
                     let seconds = s.doubleValue, duration = d.doubleValue
                     guard seconds.isFinite, duration.isFinite, duration > 0, duration < 86400, seconds >= 0, seconds <= duration + 5 else { throw HTTPFailure(400, "进度超出范围") }
+                    if seconds / duration >= 0.95 { copy.finished.insert(url) }
+                    nextRecorder.record(database:&copy,url:url,seconds:seconds,reason:entry["reason"] as? String ?? "timeupdate",now:clock(),rate:(entry["playbackRate"] as? Double) ?? 1)
                     if !course.manualProgress {
                         if let total = course.totalParts, partNumber(url)>total { throw HTTPFailure(400,"当前分 P 超出已知总集数，请刷新页面分集信息") }
                         item.seconds = min(seconds, duration); item.duration = duration
@@ -120,6 +125,7 @@ public final class TrackerAPI {
             // Older extensions save immediately; only active timeupdate messages opt into batching.
             if request.path == "/progress", body["deferSave"] as? Bool == true { store.stage(copy) }
             else { try store.commit(copy) }
+            recorder = nextRecorder
             didSync?()
             return APIResult(200, ["ok":true,"accepted":accepted,"lowPower":ProcessInfo.processInfo.isLowPowerModeEnabled])
         } catch let error as HTTPFailure { return APIResult(error.status, ["error":error.message]) }

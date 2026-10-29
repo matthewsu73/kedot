@@ -24,3 +24,24 @@ enum ProgressInput {
         seconds.isFinite ? max(0, min(sliderUpperBound(duration), seconds)) : 0
     }
 }
+
+/// Restores native window frames on valid displays, including negative origins.
+enum WindowPlacement {
+    static func clamp(_ proposed: CGRect, screens: [CGRect]) -> CGRect {
+        let available=screens.filter { !$0.isEmpty && !$0.isNull && !$0.isInfinite }
+        guard let first=available.first else { return proposed }
+        let valid=[proposed.minX,proposed.minY,proposed.width,proposed.height].allSatisfy(\.isFinite) && proposed.width > 0 && proposed.height > 0
+        let frame=valid ? proposed : CGRect(x:first.midX-177,y:first.midY-215,width:354,height:430)
+        func area(_ screen:CGRect) -> CGFloat {
+            let intersection=screen.intersection(frame)
+            return intersection.isNull ? 0 : intersection.width*intersection.height
+        }
+        func distance(_ screen:CGRect) -> CGFloat {
+            let x=max(screen.minX,min(frame.midX,screen.maxX)),y=max(screen.minY,min(frame.midY,screen.maxY))
+            return hypot(frame.midX-x,frame.midY-y)
+        }
+        let screen=available.sorted { a,b in area(a) == area(b) ? distance(a) < distance(b) : area(a) > area(b) }.first!
+        let width=min(frame.width,screen.width),height=min(frame.height,screen.height)
+        return CGRect(x:max(screen.minX,min(frame.minX,screen.maxX-width)),y:max(screen.minY,min(frame.minY,screen.maxY-height)),width:width,height:height)
+    }
+}
